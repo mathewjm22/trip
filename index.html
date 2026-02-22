@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#1e40af">
+  <meta name="description" content="Plan your road trip with weather, gas stations, parking, toll-free routing and turn-by-turn directions.">
+  <title>RoadReady – Smart Trip Planner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header id="app-header">
+    <div class="header-left">
+      <i class="fas fa-route"></i>
+      <h1>RoadReady</h1>
+    </div>
+    <div class="header-right">
+      <button id="new-trip-btn" class="icon-btn hidden" title="New Trip"><i class="fas fa-plus"></i></button>
+      <button id="settings-btn" class="icon-btn" title="API Key Settings"><i class="fas fa-cog"></i></button>
+    </div>
+  </header>
+
+  <!-- ============ MAIN LAYOUT ============ -->
+  <div id="app-wrapper">
+
+    <!-- ---- SIDEBAR ---- -->
+    <aside id="sidebar">
+
+      <!-- PLAN FORM -->
+      <div id="plan-panel">
+        <h2><i class="fas fa-map-signs"></i> Plan Your Trip</h2>
+
+        <div class="field">
+          <label><i class="fas fa-circle dot-green"></i> Starting Point</label>
+          <div class="input-row">
+            <input type="text" id="origin-input" placeholder="Enter starting address…" autocomplete="off">
+            <button id="locate-btn" class="icon-btn small" title="Use my location"><i class="fas fa-location-crosshairs"></i></button>
+          </div>
+          <ul class="suggestions" id="origin-suggestions"></ul>
+        </div>
+
+        <div class="field">
+          <label><i class="fas fa-flag-checkered dot-red"></i> Destination</label>
+          <input type="text" id="dest-input" placeholder="Enter destination address…" autocomplete="off">
+          <ul class="suggestions" id="dest-suggestions"></ul>
+        </div>
+
+        <!-- Additional Stops -->
+        <div id="stops-section">
+          <label><i class="fas fa-map-pin dot-blue"></i> Stops Along the Way</label>
+          <div id="stops-list"></div>
+          <button id="add-stop-btn" class="btn-text"><i class="fas fa-plus-circle"></i> Add a Stop</button>
+        </div>
+
+        <button id="plan-btn" class="btn-primary" disabled>
+          <i class="fas fa-paper-plane"></i> Plan My Trip
+        </button>
+      </div>
+
+      <!-- RESULTS PANEL (hidden until trip planned) -->
+      <div id="results-panel" class="hidden">
+
+        <!-- Trip summary bar -->
+        <div id="trip-summary-bar"></div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab active" data-tab="directions"><i class="fas fa-directions"></i><span>Directions</span></button>
+          <button class="tab" data-tab="weather"><i class="fas fa-cloud-sun"></i><span>Weather</span></button>
+          <button class="tab" data-tab="gas"><i class="fas fa-gas-pump"></i><span>Gas</span></button>
+          <button class="tab" data-tab="parking"><i class="fas fa-square-parking"></i><span>Parking</span></button>
+        </div>
+
+        <div class="tab-pane active" id="pane-directions"></div>
+        <div class="tab-pane" id="pane-weather"></div>
+        <div class="tab-pane" id="pane-gas"></div>
+        <div class="tab-pane" id="pane-parking"></div>
+      </div>
+    </aside>
+
+    <!-- ---- MAP ---- -->
+    <div id="map-container">
+      <div id="map"></div>
+      <div id="map-legend" class="hidden">
+        <button class="legend-toggle" id="toggle-gas-markers" title="Toggle gas stations"><i class="fas fa-gas-pump"></i></button>
+        <button class="legend-toggle" id="toggle-parking-markers" title="Toggle parking"><i class="fas fa-square-parking"></i></button>
+        <button class="legend-toggle" id="toggle-weather-markers" title="Toggle weather"><i class="fas fa-cloud-sun"></i></button>
+        <button class="legend-toggle" id="fit-route-btn" title="Fit route in view"><i class="fas fa-expand"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS MODAL ============ -->
+  <div id="modal-backdrop" class="hidden"></div>
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-header">
+      <h2><i class="fas fa-key"></i> API Keys</h2>
+      <button id="close-modal" class="icon-btn"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-note">This app needs <strong>free</strong> API keys to work. Your keys are stored only in your browser.</p>
+      <div class="field">
+        <label>OpenRouteService Key <span class="req">*required</span></label>
+        <input type="text" id="key-ors" placeholder="Paste your ORS key…">
+        <small>Free signup → <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener">openrouteservice.org</a></small>
+      </div>
+      <div class="field">
+        <label>OpenWeatherMap Key <span class="req">*required</span></label>
+        <input type="text" id="key-owm" placeholder="Paste your OWM key…">
+        <small>Free signup → <a href="https://home.openweathermap.org/users/sign_up" target="_blank" rel="noopener">openweathermap.org</a></small>
+      </div>
+      <button id="save-keys-btn" class="btn-primary"><i class="fas fa-check"></i> Save Keys</button>
+    </div>
+  </div>
+
+  <!-- ============ LOADING OVERLAY ============ -->
+  <div id="loading-overlay" class="hidden">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <p id="loading-msg">Planning your trip…</p>
+    </div>
+  </div>
+
+  <!-- ============ TOAST ============ -->
+  <div id="toast" class="hidden"></div>
+
+  <!-- ============ SCRIPTS ============ -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
